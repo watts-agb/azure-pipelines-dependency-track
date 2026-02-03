@@ -22,6 +22,7 @@ jobs:
     - name: Build UploadBOM
       run: |
         npm install
+        npm audit --audit-level=high
         npm run build
         npm prune --production
       working-directory: UploadBOM
