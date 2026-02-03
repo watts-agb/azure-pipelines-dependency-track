@@ -70,7 +70,7 @@ class DTrackClient {
     }
 
     try {
-      const response = await this.axiosInstance.get(`/api/v1/project/lookup?name=${projectName}&version=${projectVersion}`);
+      const response = await this.axiosInstance.get(`/api/v1/project/lookup?name=${encodeURIComponent(projectName)}&version=${encodeURIComponent(projectVersion)}`);
       
       if (response.status === 200) {
         let projectUUID = '';
@@ -87,7 +87,7 @@ class DTrackClient {
 
   async getProjectUUIDByName(projectName) {
     try {
-      const response = await this.axiosInstance.get(`/api/v1/project?name=${projectName}`);
+      const response = await this.axiosInstance.get(`/api/v1/project?name=${encodeURIComponent(projectName)}`);
       
       if (response.status === 200) {
         const totalCount = response.headers['x-total-count'];
