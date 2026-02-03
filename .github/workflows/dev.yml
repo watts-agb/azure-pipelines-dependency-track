@@ -22,16 +22,10 @@ jobs:
     - name: Build UploadBOM
       run: |
         npm install
+        npm audit --audit-level=high
         npm run build
         npm prune --production
       working-directory: UploadBOM
-
-    - name: Security Audit
-      run: |
-        npm install
-        npm audit --audit-level=high
-      working-directory: UploadBOM
-      continue-on-error: false
 
     - name: Run Tests
       run: |
