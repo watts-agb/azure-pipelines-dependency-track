@@ -167,7 +167,6 @@ public class DTrackManagerTests
     [Fact]
     public async Task UpdateProjectAsync_NoChanges_DoesNotCallClient()
     {
-        var result = new Task(() => { });
         await _manager.UpdateProjectAsync("proj-id", null, null, null, null, null, null);
 
         _mockClient.Verify(c => c.UpdateProjectAsync(
