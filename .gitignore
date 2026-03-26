@@ -11,3 +11,10 @@ run.cmd
 certs
 dtrack-data
 api-keys
+
+# .NET
+**/bin
+**/obj
+*.user
+*.suo
+.vs
