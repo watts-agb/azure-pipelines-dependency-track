@@ -1,104 +1,199 @@
-# 🔐 Azure Pipelines Dependency-Track Extension
+# Dependency Track BOM Uploader
 
-[![CI](https://github.com/Zargath/azure-pipelines-dependency-track/actions/workflows/prod.yml/badge.svg)](https://github.com/Zargath/azure-pipelines-dependency-track/actions/workflows/prod.yml)
-[![Visual Studio Marketplace Installs - Azure DevOps Extension](https://img.shields.io/visual-studio-marketplace/azure-devops/installs/total/eshaar-me.vss-dependency-track-integration)](https://marketplace.visualstudio.com/items?itemName=eshaar-me.vss-dependency-track-integration)
-[![License](https://img.shields.io/github/license/Zargath/azure-pipelines-dependency-track)](https://github.com/Zargath/azure-pipelines-dependency-track/blob/main/LICENSE)
-
-Integrate [Dependency-Track](https://dependencytrack.org/) into your Azure DevOps pipelines to automatically upload and assess SBOM (Software Bill of Materials) files for known vulnerabilities.
+A standalone C# command-line tool for uploading SBOMs (Software Bill of Materials) to [Dependency-Track](https://dependencytrack.org/). Designed to be downloaded and executed directly during CI/CD pipeline runs—no runtime dependencies beyond .NET 8.
 
 ---
 
-## 🚀 Features
+## Features
 
 - Upload SBOMs (CycloneDX format) to Dependency-Track
-- Automatically create projects if they don’t exist
-- Fail builds based on vulnerability thresholds and policies
-- Supports both manual API key input and service connections
+- Automatically create projects if they don't exist
+- **Automatically create parent projects** if they don't exist (no more manual setup)
+- Organize projects in a parent-child hierarchy
+- Update project metadata (description, classifier, tags, group, etc.)
+- Fail or warn builds based on vulnerability and policy violation thresholds
+- Support for custom CA certificates (self-signed / internal CAs)
+- Configuration via **YAML file**, **command-line arguments**, or **both** (CLI overrides YAML)
 
 ---
 
-## 🛠 Installation
+## Getting Started
 
-Install the extension from the [Azure DevOps Marketplace](https://marketplace.visualstudio.com/items?itemName=eshaar-me.vss-dependency-track-integration).
+### Prerequisites
 
----
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (for building from source)
 
-## 📋 Usage Example
+### Build
 
-```yaml
-trigger:
-- master
+```bash
+dotnet build src/DependencyTrackUploader/DependencyTrackUploader.csproj -c Release
+```
 
-pool:
-  vmImage: 'ubuntu-latest'
+### Publish as a Self-Contained Binary
 
-steps:
-- task: NodeTool@0
-  inputs:
-    versionSpec: '18.x'
-  displayName: 'Install Node.js'
+Produce a single standalone binary that requires no .NET runtime on the target machine:
 
-- script: |
-    npm install
-    npm install -g @cyclonedx/cyclonedx-npm
-  displayName: 'npm install'
+```bash
+# Linux (x64)
+dotnet publish src/DependencyTrackUploader/DependencyTrackUploader.csproj \
+  -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -o publish/linux-x64
 
-- script: |
-    cyclonedx-npm --version
-    cyclonedx-npm --output-file '$(Agent.TempDirectory)/bom.xml'
-  displayName: 'Create BOM'
+# Windows (x64)
+dotnet publish src/DependencyTrackUploader/DependencyTrackUploader.csproj \
+  -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/win-x64
 
-- task: upload-bom-dtrack@1
-  displayName: 'Upload SBOM to Dependency-Track'
-  inputs:
-    bomFilePath: '$(Build.TempDirectory)/bom.xml'
-    dtrackProjName: 'my-app'
-    dtrackProjVersion: '1.0.0'
-    dtrackAPIKey: '$(DTRACK_API_KEY)'
-    dtrackURI: 'https://dependency-track.example.com/'
-    dtrackProjAutoCreate: true
-    thresholdAction: 'warn'
-    thresholdCritical: 0
-    thresholdHigh: 5
+# macOS (x64)
+dotnet publish src/DependencyTrackUploader/DependencyTrackUploader.csproj \
+  -c Release -r osx-x64 --self-contained -p:PublishSingleFile=true -o publish/osx-x64
+```
+
+### Run Tests
+
+```bash
+dotnet test tests/DependencyTrackUploader.Tests/DependencyTrackUploader.Tests.csproj
 ```
 
 ---
 
-## ⚙️ Input Parameters
+## Usage
 
-### Required
+### Purely via Command-Line Arguments
 
-| Name | Description |
-|------|-------------|
-| `bomFilePath` | Path to the SBOM file (e.g. `**/bom.xml`) |
-| `serviceConnection`, or `dtrackAPIKey` and `dtrackURI` | Service connection or API key and URL to Dependency-Track |
+```bash
+./dtrack-uploader \
+  --dtrack-url https://dependency-track.example.com \
+  --api-key YOUR_API_KEY \
+  --project-name my-app \
+  --project-version 1.0.0 \
+  --auto-create \
+  --bom-file-path bom.xml \
+  --threshold-action warn \
+  --threshold-critical 0
+```
 
-### Project Identification
+### Using a YAML Config File
 
-Provide **one** of the following:
+```bash
+./dtrack-uploader --config config.yaml
+```
 
-| Name | Description |
-|------|-------------|
-| `dtrackProjId` | Existing project UUID |
-| `dtrackProjName` and `dtrackProjVersion` | Project name and version (with optional auto-create) |
+See [`config-template.yaml`](config-template.yaml) for all available YAML options.
 
-### Optional Inputs
+### Combining YAML Config with CLI Overrides
 
-| Name | Description |
-|------|-------------|
-| `dtrackProjAutoCreate` | Auto-create project if project doesn’t exist |
-| `dtrackProjDescription` | Set the project description |
-| `dtrackProjTags` | Set the prohject tags. (Each tag on a new line) |
-| `dtrackProjSwidTagId` | Set the project SWID Tag Id |
-| `dtrackProjGroup` | Set the project Namespace / group / vendor identifier |
-| `dtrackProjClassifier` | Classifier (e.g., `APPLICATION`, `FRAMEWORK`, etc.) |
-| `dtrackParentProjName` | Parent project name (with optional auto-create) |
-| `dtrackParentProjVersion` | Parent project version (with optional auto-create) |
-| `dtrackIsLatest` | Sets the project as the latest version. Defaults to false. |
+Define common settings in a YAML file and override specific values per run via CLI arguments. **CLI arguments always take precedence over YAML values.**
+
+```bash
+# config.yaml contains base URL, API key, project name, thresholds, etc.
+# Override just the version and BOM path per pipeline run:
+./dtrack-uploader \
+  --config config.yaml \
+  --project-version $BUILD_VERSION \
+  --bom-file-path $BOM_PATH
+```
+
+### CI/CD Pipeline Example (Azure Pipelines)
+
+```yaml
+steps:
+- script: |
+    curl -L -o dtrack-uploader https://your-artifacts-host/dtrack-uploader-linux-x64
+    chmod +x dtrack-uploader
+  displayName: 'Download dtrack-uploader'
+
+- script: |
+    ./dtrack-uploader \
+      --config config.yaml \
+      --project-version $(Build.BuildNumber) \
+      --bom-file-path $(Build.ArtifactStagingDirectory)/bom.xml
+  displayName: 'Upload SBOM to Dependency-Track'
+  env:
+    DTRACK_API_KEY: $(DTrackApiKey)
+```
 
 ---
 
-## 🗝️ Required Permissions
+## Command-Line Arguments
+
+| Argument | Alias | Description |
+|----------|-------|-------------|
+| `--config` | `-c` | Path to a YAML configuration file. All settings can be defined there. |
+| `--bom-file-path` | `-b` | **(Required)** Path to the BOM file to upload. |
+| `--dtrack-url` | | **(Required)** Dependency Track server URL. |
+| `--api-key` | | **(Required)** Dependency Track API key. |
+
+### Project Identification
+
+Provide **either** `--project-id`, **or** `--project-name` and `--project-version`:
+
+| Argument | Description |
+|----------|-------------|
+| `--project-id` | UUID of an existing project in Dependency Track. |
+| `--project-name` | Project name. Required if `--project-id` is not specified, or when using `--auto-create`. |
+| `--project-version` | Project version. Required if `--project-id` is not specified, or when using `--auto-create`. |
+
+### Project Settings (Optional)
+
+| Argument | Description |
+|----------|-------------|
+| `--auto-create` | Auto-create the project if it doesn't exist. Requires `--project-name` and `--project-version`. |
+| `--is-latest` | Mark this project version as the latest. Defaults to `false`. |
+| `--project-description` | Set the project description in Dependency Track. |
+| `--project-classifier` | Set the project classifier. Valid values: `APPLICATION`, `FRAMEWORK`, `LIBRARY`, `CONTAINER`, `OPERATING_SYSTEM`, `DEVICE`, `FIRMWARE`, `FILE`, `PLATFORM`, `DEVICE_DRIVER`, `MACHINE_LEARNING_MODEL`, `DATA`. |
+| `--project-swid-tag-id` | Set the project SWID Tag ID. |
+| `--project-group` | Set the project namespace / group / vendor identifier. |
+| `--project-tags` | Set project tags. Can specify multiple values (e.g., `--project-tags tag1 tag2 tag3`). |
+
+### Parent Project (Optional)
+
+When using `--auto-create`, you can specify a parent project. If the parent project does not exist, it will be **created automatically**.
+
+| Argument | Description |
+|----------|-------------|
+| `--parent-project-name` | Name of the parent project. |
+| `--parent-project-version` | Version of the parent project. If not specified, defaults to `"default"` when the parent needs to be created. |
+
+### SSL / TLS (Optional)
+
+| Argument | Description |
+|----------|-------------|
+| `--ca-file-path` | Path to a PEM-encoded CA certificate. Use when Dependency Track uses a self-signed certificate or an internal CA. |
+
+### Threshold Controls (Optional)
+
+Configure thresholds to warn or fail the build based on vulnerability counts or policy violations. A threshold value of `-1` disables that particular check.
+
+| Argument | Description |
+|----------|-------------|
+| `--threshold-action` | Action to take when a threshold is exceeded: `none` (default), `warn`, or `error`. |
+| `--threshold-critical` | Maximum allowed critical vulnerabilities. Default: `-1` (disabled). |
+| `--threshold-high` | Maximum allowed high vulnerabilities. Default: `-1` (disabled). |
+| `--threshold-medium` | Maximum allowed medium vulnerabilities. Default: `-1` (disabled). |
+| `--threshold-low` | Maximum allowed low vulnerabilities. Default: `-1` (disabled). |
+| `--threshold-unassigned` | Maximum allowed unassigned vulnerabilities. Default: `-1` (disabled). |
+| `--threshold-policy-violations-fail` | Maximum allowed fail policy violations. Default: `-1` (disabled). |
+| `--threshold-policy-violations-warn` | Maximum allowed warn policy violations. Default: `-1` (disabled). |
+| `--threshold-policy-violations-info` | Maximum allowed info policy violations. Default: `-1` (disabled). |
+| `--threshold-policy-violations-total` | Maximum allowed total policy violations. Default: `-1` (disabled). |
+
+### Other
+
+| Argument | Description |
+|----------|-------------|
+| `--version` | Show version information. |
+| `-h`, `--help` | Show help and usage information. |
+
+---
+
+## YAML Configuration
+
+All command-line arguments can also be specified in a YAML configuration file. See [`config-template.yaml`](config-template.yaml) for a complete example with all available options.
+
+When both a YAML config file and CLI arguments are provided, **CLI arguments override the YAML values**. This allows you to define common settings in YAML (e.g., server URL, API key, thresholds) and override run-specific values from the command line (e.g., project version, BOM file path).
+
+---
+
+## Required Permissions
 
 The following table outlines the minimum permissions required in Dependency-Track for each operation:
 
@@ -112,6 +207,7 @@ The following table outlines the minimum permissions required in Dependency-Trac
 ### Recommended Setup
 
 For most CI/CD scenarios:
+
 ```
 BOM_UPLOAD + PROJECT_CREATION_UPLOAD + VIEW_PORTFOLIO
 ```
@@ -120,44 +216,24 @@ Add `PORTFOLIO_MANAGEMENT` if you need to set project descriptions, tags, or oth
 
 ---
 
-## 🔒 Threshold Controls
+## Exit Codes
 
-Use these inputs to warn or fail the build based on detected vulnerabilities:
-
-| Name | Description |
-|------|-------------|
-| `thresholdAction` | `none` (default), `warn`, or `error` |
-| `thresholdCritical` | Max allowed critical vulnerabilities |
-| `thresholdHigh` | Max allowed high vulnerabilities |
-| `thresholdMedium` | Max allowed medium vulnerabilities |
-| `thresholdLow` | Max allowed low vulnerabilities |
-| `thresholdUnassigned` | Max allowed unassigned vulnerabilities |
-| `thresholdpolicyViolationsFail` | Max allowed failed policy violations |
-| `thresholdpolicyViolationsWarn` | Max allowed warn policy violations |
-| `thresholdpolicyViolationsInfo` | Max allowed info policy violations |
-| `thresholdpolicyViolationsTotal` | Max allowed total policy violations |
+| Code | Meaning |
+|------|---------|
+| `0` | Success (or threshold exceeded in `warn` mode). |
+| `1` | Error — validation failure, upload failure, or threshold exceeded in `error` mode. |
 
 ---
 
-## 🔑 SSL Options
+## Notes
 
-These settings are used when Dependency Track is using a self-signed certificate or an internal CA provider for it's TLS configuration.
-
-| Name | Description |
-|------|-------------|
-| `caFilePath` | File path to PEM encoded CA certificate |
+- The BOM file must be in [CycloneDX](https://cyclonedx.org/) format.
+- When `--auto-create` is enabled and a `--parent-project-name` is specified, the parent project will be created automatically if it does not already exist.
+- Threshold checks only run when `--threshold-action` is set to `warn` or `error` **and** at least one threshold value is set to `0` or higher.
 
 ---
 
-## 🧪 Notes
+## Links
 
-- SBOM must be in [CycloneDX](https://cyclonedx.org/) format.
-- Use `dtrackProjAutoCreate: true` if the project might not exist yet.
-
----
-
-## 📎 Links
-
-- 🌐 [Dependency-Track](https://dependencytrack.org/)
-- 🛒 [Azure DevOps Marketplace](https://marketplace.visualstudio.com/items?itemName=eshaar-me.vss-dependency-track-integration)
-- 📁 [GitHub Repository](https://github.com/Zargath/azure-pipelines-dependency-track)
+- [Dependency-Track](https://dependencytrack.org/)
+- [CycloneDX](https://cyclonedx.org/)

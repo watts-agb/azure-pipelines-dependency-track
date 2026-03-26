@@ -1,0 +1,122 @@
+# =============================================================================
+# Dependency Track BOM Uploader - Configuration Template
+# =============================================================================
+#
+# This file shows all available configuration options.
+# Copy this file to 'config.yaml' and modify as needed.
+#
+# CLI arguments always override values defined in this file.
+# Usage: ./dtrack-uploader --config config.yaml [--cli-overrides...]
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Connection Settings (Required)
+# -----------------------------------------------------------------------------
+
+# Dependency Track server URL
+dtrack-url: https://dependency-track.example.com
+
+# API key for authenticating with Dependency Track
+api-key: your-api-key-here
+
+# -----------------------------------------------------------------------------
+# Project Identification
+# -----------------------------------------------------------------------------
+# Provide EITHER 'project-id' OR 'project-name' + 'project-version'.
+# When using 'auto-create', 'project-name' and 'project-version' are required.
+
+# UUID of an existing project (optional if name + version are provided)
+# project-id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+# Project name
+project-name: my-application
+
+# Project version
+project-version: "1.0.0"
+
+# -----------------------------------------------------------------------------
+# BOM File (Required)
+# -----------------------------------------------------------------------------
+
+# Path to the CycloneDX BOM file
+bom-file-path: ./bom.xml
+
+# -----------------------------------------------------------------------------
+# Project Settings (Optional)
+# -----------------------------------------------------------------------------
+
+# Auto-create the project if it does not exist in Dependency Track.
+# Requires 'project-name' and 'project-version' to be set.
+auto-create: true
+
+# Mark this project version as the latest version.
+# is-latest: true
+
+# Project description
+# project-description: "My application description"
+
+# Project classifier. Valid values:
+#   APPLICATION, FRAMEWORK, LIBRARY, CONTAINER, OPERATING_SYSTEM,
+#   DEVICE, FIRMWARE, FILE, PLATFORM, DEVICE_DRIVER,
+#   MACHINE_LEARNING_MODEL, DATA
+# project-classifier: APPLICATION
+
+# Project SWID Tag ID
+# project-swid-tag-id: ""
+
+# Project namespace / group / vendor identifier
+# project-group: com.example
+
+# Project tags (list)
+# project-tags:
+#   - backend
+#   - production
+#   - team-alpha
+
+# -----------------------------------------------------------------------------
+# Parent Project (Optional)
+# -----------------------------------------------------------------------------
+# Used with 'auto-create' to organize projects in a hierarchy.
+# If the parent project does not exist, it will be created automatically.
+
+# Parent project name
+# parent-project-name: my-platform
+
+# Parent project version (defaults to "default" if parent needs to be created)
+# parent-project-version: "1.0.0"
+
+# -----------------------------------------------------------------------------
+# SSL / TLS (Optional)
+# -----------------------------------------------------------------------------
+
+# Path to a PEM-encoded CA certificate file.
+# Use when Dependency Track is behind a self-signed certificate or internal CA.
+# ca-file-path: /path/to/ca-cert.pem
+
+# -----------------------------------------------------------------------------
+# Threshold Controls (Optional)
+# -----------------------------------------------------------------------------
+# Configure thresholds to warn or fail the build when vulnerability counts
+# or policy violations exceed the allowed maximum.
+# A value of -1 disables that specific threshold check.
+
+# Action to take when a threshold is exceeded.
+# Valid values: none (default), warn, error
+#   none  - Do not check thresholds
+#   warn  - Print a warning but exit with code 0
+#   error - Print an error and exit with code 1
+# threshold-action: none
+
+# Maximum allowed vulnerabilities by severity (-1 = disabled)
+# threshold-critical: -1
+# threshold-high: -1
+# threshold-medium: -1
+# threshold-low: -1
+# threshold-unassigned: -1
+
+# Maximum allowed policy violations by type (-1 = disabled)
+# threshold-policy-violations-fail: -1
+# threshold-policy-violations-warn: -1
+# threshold-policy-violations-info: -1
+# threshold-policy-violations-total: -1
